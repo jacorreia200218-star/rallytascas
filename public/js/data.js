@@ -30,66 +30,105 @@ export const CHALLENGES = [
   { id: 'c24', title: 'Melhor sítio da mesa', text: 'Descubram, por votação secreta, qual foi o melhor detalhe da tasca: comida, ambiente ou pessoas.', points: 5 },
 ];
 
-/* Percurso real (ordem fixa). Moradas e coordenadas confirmadas em fonte de mapas (Google Places, out. 2026).
+/* Percurso real (ordem fixa, otimizada para andar o mínimo possível: ver README).
+ * Moradas e coordenadas confirmadas em fonte de mapas (Google Places, out. 2026).
  * Horários de funcionamento NÃO são guardados: ficam por confirmar (campo `hours` vazio, editável na app). */
 export const ROUTE = [
   {
-    name: 'Cervejaria Gazela', short: 'Gazela', zone: 'Batalha', specialty: 'Cachorrinho',
+    key: 'gazela', name: 'Cervejaria Gazela', short: 'Gazela', zone: 'Batalha', specialty: 'Cachorrinho',
     address: 'Travessa de Cimo de Vila, 4, Porto', lat: 41.1448829, lng: -8.607595,
     ask: 'Um cachorrinho para partilhar.',
     desc: 'Casa conhecida pelo cachorrinho, uma sandes pequena e quente com salsicha.',
   },
   {
-    name: 'Casa Guedes Tradicional', short: 'Casa Guedes', zone: 'Poveiros', specialty: 'Sandes de pernil',
+    key: 'rissois', name: 'Oficina dos Rissóis', short: 'Rissóis', zone: 'São Lázaro', specialty: 'Rissóis',
+    address: 'Passeio de São Lázaro, 5A, Porto', lat: 41.1458008, lng: -8.6033419,
+    ask: 'Dois rissóis de sabores diferentes.',
+    desc: 'Casa de rissóis, junto ao Passeio de São Lázaro.',
+  },
+  {
+    key: 'guedes', name: 'Casa Guedes Tradicional', short: 'Casa Guedes', zone: 'Poveiros', specialty: 'Sandes de pernil',
     address: 'Praça dos Poveiros, 130, Porto', lat: 41.146016, lng: -8.6034864,
-    ask: 'Uma sandes de pernil para partilhar. Queijo da Serra como extra opcional.',
+    ask: 'Uma sandes de pernil para partilhar.',
     desc: 'Casa conhecida pela sandes de pernil.',
   },
   {
-    name: 'Café Santiago', short: 'Café Santiago', zone: 'Passos Manuel', specialty: 'Francesinha',
-    address: 'Rua de Passos Manuel, 226, Porto', lat: 41.1463821, lng: -8.6048251,
-    ask: 'Partilhar uma francesinha, se o restaurante permitir.',
-    desc: 'Casa conhecida pela francesinha. Prova opcional: é uma refeição pesada.',
-    optional: true,
+    key: 'republica', name: 'República dos Cachorros', short: 'República', zone: 'Santo André', specialty: 'Cachorrinho',
+    address: 'Rua de Santo André, 28, Porto', lat: 41.1461777, lng: -8.6045061,
+    ask: 'Um cachorrinho para partilhar (e comparar com o da Gazela).',
+    desc: 'Casa de cachorrinhos. Morada conforme o mapa (listado como “República dos Cachorros 2”): confirma no local.',
   },
   {
-    name: 'Conga — Casa das Bifanas', short: 'Conga', zone: 'Bonjardim', specialty: 'Bifana',
+    key: 'conga', name: 'Conga — Casa das Bifanas', short: 'Conga', zone: 'Bonjardim', specialty: 'Bifana',
     address: 'Rua do Bonjardim, 318, Porto', lat: 41.1489414, lng: -8.6093776,
     ask: 'Uma bifana para partilhar.',
     desc: 'Casa conhecida pela bifana.',
   },
   {
-    name: 'Confeitaria do Bolhão', short: 'Bolhão', zone: 'Bolhão', specialty: 'Pastelaria tradicional',
-    address: 'Rua Formosa, 339, Porto', lat: 41.1485339, lng: -8.6075535,
-    ask: 'Dois doces pequenos para partilhar, ou um doce e dois cafés.',
-    desc: 'Pastelaria e confeitaria tradicional na zona do Bolhão.',
+    key: 'pastel', name: 'Casa Portuguesa do Pastel de Bacalhau', short: 'Pastel de Bacalhau', zone: 'Rua das Flores', specialty: 'Pastel de bacalhau com queijo da Serra',
+    address: 'Rua das Flores, 78–82, Porto', lat: 41.1437088, lng: -8.6136669,
+    ask: 'Um pastel de bacalhau com queijo da Serra para partilhar.',
+    desc: 'Loja da Rua das Flores dedicada ao pastel de bacalhau.',
   },
 ];
 
 export const RALLY_WINDOW = '18:00–21:00';
 
-const STOP_DEFAULTS = { note: '', example: false, short: '', zone: '', specialty: '', ask: '', desc: '', hours: '', optional: false };
+const STOP_DEFAULTS = { note: '', example: false, key: '', short: '', zone: '', specialty: '', ask: '', desc: '', hours: '', optional: false };
 
 export function seedStops() {
   return ROUTE.map((s) => ({ id: uid('s'), ...STOP_DEFAULTS, ...s }));
 }
 
-/** Migração v1 → v2: se o roteiro ainda é só o de demonstração (todas as paragens marcadas como exemplo),
- *  substitui-o pelo percurso real MANTENDO os ids das paragens (visitas, desafios, avaliações e fotografias
- *  continuam ligados). Se o utilizador já editou alguma paragem, nada é substituído. Devolve true se alterou. */
+/* Nomes do percurso da versão anterior (5 paragens), para reconhecer roteiros ainda não editados. */
+const LEGACY_KEYS = {
+  'Cervejaria Gazela': 'gazela', 'Casa Guedes Tradicional': 'guedes', 'Café Santiago': 'santiago',
+  'Conga — Casa das Bifanas': 'conga', 'Confeitaria do Bolhão': 'bolhao',
+};
+
+/** Migrações do roteiro. Nunca apagam paragens com registos; mantêm os ids (visitas, avaliações,
+ *  desafios e fotografias continuam ligados). Devolve true se alterou o estado.
+ *  1) v1: roteiro só de demonstração (todas `example`) → percurso real, por posição.
+ *  2) v2: roteiro anterior de 5 paragens, sem edições (nomes conhecidos, sem `key`) → novo percurso de 6,
+ *     reaproveitando as paragens que coincidem (Gazela, Casa Guedes, Conga). Paragens que deixam de fazer parte
+ *     (Café Santiago, Confeitaria do Bolhão) só são mantidas, no fim, se tiverem registos.
+ *  Se o utilizador editou o roteiro (nomes diferentes), nada é substituído. */
 export function upgradeState(state) {
   const stops = state.stops;
-  if (!stops.length || !stops.every((x) => x.example)) return false;
-  const real = ROUTE;
+  if (!stops.length) return false;
   const hasData = (id) => !!(state.visits[id] || state.challenges[id] || state.ratings[id]);
-  const out = [];
-  stops.forEach((old, i) => {
-    if (i < real.length) out.push({ ...STOP_DEFAULTS, ...real[i], id: old.id });
-    else if (hasData(old.id)) out.push(old); // nunca apagar paragens com registos
-  });
-  for (let i = stops.length; i < real.length; i++) out.push({ id: uid('s'), ...STOP_DEFAULTS, ...real[i] });
-  state.stops = out;
-  return true;
+
+  if (stops.every((x) => x.example)) {
+    const out = [];
+    stops.forEach((old, i) => {
+      if (i < ROUTE.length) out.push({ ...STOP_DEFAULTS, ...ROUTE[i], id: old.id });
+      else if (hasData(old.id)) out.push(old);
+    });
+    for (let i = stops.length; i < ROUTE.length; i++) out.push({ id: uid('s'), ...STOP_DEFAULTS, ...ROUTE[i] });
+    state.stops = out;
+    return true;
+  }
+
+  const known = stops.every((x) => !x.example && (x.key || LEGACY_KEYS[x.name]));
+  if (known && stops.some((x) => !x.key)) {
+    const byKey = new Map();
+    for (const x of stops) byKey.set(x.key || LEGACY_KEYS[x.name], x);
+    const used = new Set();
+    const out = ROUTE.map((r) => {
+      const old = byKey.get(r.key);
+      if (old) {
+        used.add(old.id);
+        return { ...STOP_DEFAULTS, ...r, id: old.id, hours: old.hours || '', note: old.note || '' };
+      }
+      return { id: uid('s'), ...STOP_DEFAULTS, ...r };
+    });
+    for (const x of stops) {
+      if (!used.has(x.id) && hasData(x.id)) out.push({ ...x, key: x.key || LEGACY_KEYS[x.name] });
+    }
+    state.stops = out;
+    return true;
+  }
+  return false;
 }
 
 export function createInitialState(now = new Date()) {
@@ -106,5 +145,6 @@ export function createInitialState(now = new Date()) {
     challenges: {},
     ratings: {},
     settings: { hideInstallHint: false },
+    summary: { favorites: {}, best: null, compare: null },
   };
 }

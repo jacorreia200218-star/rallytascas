@@ -3,7 +3,7 @@
  * - Só trata pedidos GET ao próprio endereço; nunca contacta outros servidores.
  * - Para publicar uma nova versão: mude VERSION (a cache antiga é apagada).
  */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = `rally-gastronomico-${VERSION}`;
 
 // Mantenha esta lista igual aos ficheiros de public/ (há um teste que o verifica).
@@ -13,6 +13,7 @@ const ASSETS = [
   'manifest.webmanifest',
   'css/styles.css',
   'js/app.js',
+  'js/challenges.js',
   'js/data.js',
   'js/db.js',
   'js/diagnostico.js',
@@ -24,6 +25,7 @@ const ASSETS = [
   'js/transfer.js',
   'js/ui.js',
   'js/zip.js',
+  'js/views/desafio.js',
   'js/views/galeria.js',
   'js/views/mais.js',
   'js/views/paragem.js',

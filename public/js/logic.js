@@ -9,7 +9,9 @@ export const CATEGORIES = [
 ];
 
 export const POINTS = { visit: 10, rating: 5, photo: 2, photoCap: 3 };
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
+export const CHALLENGE_POINTS = { team: 1, individual: 1 };
+export const CHALLENGE_STATUSES = ['proposed', 'revealed', 'started', 'done', 'skipped'];
 
 /* ---------- utilitários ---------- */
 
@@ -150,6 +152,7 @@ export function nextStop(state) {
 
 export function computeScores(state, photoCounts = {}) {
   const players = {};
+  let teamChallenges = 0;
   for (const p of state.players) players[p.id] = { challenges: 0, ratings: 0, total: 0 };
 
   for (const stop of state.stops) {
@@ -157,7 +160,12 @@ export function computeScores(state, photoCounts = {}) {
     for (const p of state.players) if (isRatingComplete(rs[p.id])) players[p.id].ratings += POINTS.rating;
     const ch = state.challenges?.[stop.id];
     if (ch?.status === 'done') {
-      for (const pid of ch.by || []) if (players[pid]) players[pid].challenges += Number(ch.points) || 0;
+      if (ch.v === 2) {
+        teamChallenges += CHALLENGE_POINTS.team; // desafio concluído: 1 ponto para o progresso do rally
+        for (const pid of ch.winners || []) if (players[pid]) players[pid].challenges += CHALLENGE_POINTS.individual;
+      } else {
+        for (const pid of ch.by || []) if (players[pid]) players[pid].challenges += Number(ch.points) || 0; // desafios da versão anterior
+      }
     }
   }
   for (const p of state.players) players[p.id].total = players[p.id].challenges + players[p.id].ratings;
@@ -167,7 +175,8 @@ export function computeScores(state, photoCounts = {}) {
   const team = {
     visits: visited * POINTS.visit,
     photos: photoPts,
-    total: visited * POINTS.visit + photoPts + state.players.reduce((n, p) => n + players[p.id].total, 0),
+    challenges: teamChallenges,
+    total: visited * POINTS.visit + photoPts + teamChallenges + state.players.reduce((n, p) => n + players[p.id].total, 0),
   };
 
   const [a, b] = state.players;
@@ -204,8 +213,8 @@ export const ACHIEVEMENTS = [
   { id: 'all', icon: '🏁', title: 'Rally completo', desc: 'Visitar todas as paragens.', goal: (c) => Math.max(1, c.prog.total), value: (c) => c.prog.visited },
   { id: 'reporter', icon: '📸', title: 'Repórter de tasca', desc: 'Tirar 5 fotografias.', goal: () => 5, value: (c) => c.prog.photos },
   { id: 'album', icon: '🖼️', title: 'Álbum completo', desc: 'Ter pelo menos uma fotografia em todas as paragens.', goal: (c) => Math.max(1, c.prog.total), value: (c) => c.prog.stopsWithPhotos },
-  { id: 'accepted', icon: '🎁', title: 'Desafio aceite', desc: 'Cumprir o primeiro desafio surpresa.', goal: () => 1, value: (c) => c.prog.challengesDone },
-  { id: 'fearless', icon: '🔥', title: 'Sem medo', desc: 'Cumprir 3 desafios surpresa.', goal: () => 3, value: (c) => c.prog.challengesDone },
+  { id: 'accepted', icon: '🎁', title: 'Desafio aceite', desc: 'Concluir o primeiro desafio.', goal: () => 1, value: (c) => c.prog.challengesDone },
+  { id: 'fearless', icon: '🔥', title: 'Sem medo', desc: 'Concluir 3 desafios.', goal: () => 3, value: (c) => c.prog.challengesDone },
   { id: 'critics', icon: '📝', title: 'Críticos gastronómicos', desc: 'Avaliarem os dois, por completo, 3 paragens.', goal: () => 3, value: (c) => c.prog.ratedStops },
   {
     id: 'sync', icon: '💞', title: 'Paladares em sintonia', desc: 'Numa paragem, médias dos dois com menos de 0,5 de diferença.', goal: () => 1,
@@ -266,6 +275,34 @@ export function projectStops(stops, width, height, pad = 34) {
     });
   }
   return out;
+}
+
+/** Afasta marcadores que ficariam sobrepostos (ex.: duas casas a ~30 m uma da outra). O mapa é esquemático:
+ *  só a ordem e a vizinhança importam, por isso este afastamento visual é aceitável. */
+export function spreadPositions(pos, minDist = 28, W = 360, H = 260, pad = 14) {
+  const ids = [...pos.keys()];
+  const pts = new Map(ids.map((id) => [id, { ...pos.get(id) }]));
+  for (let pass = 0; pass < 40; pass++) {
+    let moved = false;
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = pts.get(ids[i]);
+        const b = pts.get(ids[j]);
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let d = Math.hypot(dx, dy);
+        if (d >= minDist) continue;
+        if (d < 0.01) { dx = 1; dy = 0; d = 1; }
+        const push = (minDist - d) / 2 + 0.5;
+        a.x -= (dx / d) * push; a.y -= (dy / d) * push;
+        b.x += (dx / d) * push; b.y += (dy / d) * push;
+        for (const q of [a, b]) { q.x = Math.min(W - pad, Math.max(pad, q.x)); q.y = Math.min(H - pad, Math.max(pad, q.y)); }
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  return pts;
 }
 
 const overlaps = (a, b) => !(a.x2 < b.x1 || a.x1 > b.x2 || a.y2 < b.y1 || a.y1 > b.y2);
@@ -392,6 +429,7 @@ export function normalizeState(raw) {
       lng: ok ? lng : null,
       note: str(s?.note, 300),
       example: !!s?.example,
+      key: str(s?.key, 20),
       short: str(s?.short, 20),
       zone: str(s?.zone, 40),
       specialty: str(s?.specialty, 60),
@@ -410,8 +448,10 @@ export function normalizeState(raw) {
     if (arrivedAt) visits[s.id] = { arrivedAt };
 
     const c = raw.challenges?.[s.id];
-    if (c && typeof c === 'object' && ['revealed', 'done', 'skipped'].includes(c.status)) {
-      challenges[s.id] = {
+    if (c && typeof c === 'object' && CHALLENGE_STATUSES.includes(c.status)) {
+      const v2 = Number(c.v) === 2;
+      const ids = (arr) => (Array.isArray(arr) ? arr : []).filter((id) => playerIds.has(id));
+      const rec = {
         challengeId: str(c.challengeId, 40),
         title: str(c.title, 80),
         text: str(c.text, 400),
@@ -419,8 +459,29 @@ export function normalizeState(raw) {
         status: c.status,
         revealedAt: isoOrNull(c.revealedAt),
         doneAt: isoOrNull(c.doneAt),
-        by: (Array.isArray(c.by) ? c.by : []).filter((id) => playerIds.has(id)),
+        by: ids(c.by),
       };
+      if (v2) {
+        rec.v = 2;
+        rec.cat = str(c.cat, 20);
+        rec.scoring = ['none', 'guess', 'gastro', 'compare'].includes(c.scoring) ? c.scoring : 'none';
+        rec.seen = (Array.isArray(c.seen) ? c.seen : []).map((x) => str(x, 40)).filter(Boolean).slice(0, 60);
+        rec.winners = ids(c.winners);
+        rec.shown = !!c.shown;
+        const picks = Array.isArray(c.sec?.picks) ? c.sec.picks.slice(0, 12) : [];
+        rec.sec = {
+          i: Math.max(0, Math.min(12, Math.round(Number(c.sec?.i) || 0))),
+          picks: picks.map((pk) => {
+            const o = {};
+            for (const id of playerIds) {
+              const n = pk && Number.isInteger(pk[id]) ? pk[id] : null;
+              if (n !== null && n >= 0 && n <= 10) o[id] = n;
+            }
+            return o;
+          }),
+        };
+      }
+      challenges[s.id] = rec;
     }
 
     const rs = raw.ratings?.[s.id];
@@ -439,6 +500,21 @@ export function normalizeState(raw) {
     }
   }
 
+  const stopIdSet = new Set(stops.map((s) => s.id));
+  const favorites = {};
+  for (const p of players) {
+    const f = raw.summary?.favorites?.[p.id];
+    if (typeof f === 'string' && stopIdSet.has(f)) favorites[p.id] = f;
+  }
+  const best = typeof raw.summary?.best === 'string' && stopIdSet.has(raw.summary.best) ? raw.summary.best : null;
+  let compare = null;
+  const rc = raw.summary?.compare;
+  if (rc && typeof rc === 'object' && ['gazela', 'republica', 'empate'].includes(rc.winner)) {
+    const picks = {};
+    for (const p of players) if (['gazela', 'republica'].includes(rc.picks?.[p.id])) picks[p.id] = rc.picks[p.id];
+    compare = { winner: rc.winner, picks };
+  }
+
   return {
     schemaVersion: SCHEMA_VERSION,
     createdAt: isoOrNull(raw.createdAt) || new Date().toISOString(),
@@ -449,5 +525,6 @@ export function normalizeState(raw) {
     challenges,
     ratings,
     settings: { hideInstallHint: !!raw.settings?.hideInstallHint },
+    summary: { favorites, best, compare },
   };
 }

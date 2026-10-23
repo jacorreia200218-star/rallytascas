@@ -1,8 +1,8 @@
 /* Ranking das paragens, duelo entre jogadores, conquistas e progresso. */
-import { h, pageHeader, progressBar, formatScore, starText, plural } from '../ui.js';
+import { h, icon, pageHeader, progressBar, formatScore, starText, plural } from '../ui.js';
 import * as store from '../store.js';
 import { session } from '../session.js';
-import { CATEGORIES, POINTS, rankStops, computeScores, progress, evaluateAchievements } from '../logic.js';
+import { CHALLENGE_POINTS, isVisited, CATEGORIES, POINTS, rankStops, computeScores, progress, evaluateAchievements } from '../logic.js';
 
 const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
@@ -56,26 +56,72 @@ function duelTab(state, counts) {
   const sc = computeScores(state, counts);
   const [a, b] = state.players;
   const banner = sc.leader === 'tie'
-    ? 'Empate técnico! 🤝'
-    : `${state.players.find((p) => p.id === sc.leader).name} está na frente 🏆`;
+    ? 'Empate técnico'
+    : `${state.players.find((p) => p.id === sc.leader).name} está na frente`;
 
   const col = (p) => h('div', { class: `duel-col ${sc.leader === p.id ? 'lead' : ''}` },
     h('div', { class: 'duel-name' }, p.name),
     h('div', { class: 'duel-total' }, String(sc.players[p.id].total)),
     h('div', { class: 'muted small' }, 'pontos'),
-    h('div', { class: 'duel-detail' }, `🎁 ${sc.players[p.id].challenges}`),
-    h('div', { class: 'duel-detail' }, `⭐ ${sc.players[p.id].ratings}`));
+    h('div', { class: 'duel-detail' }, `Desafios ${sc.players[p.id].challenges}`),
+    h('div', { class: 'duel-detail' }, `Avaliações ${sc.players[p.id].ratings}`));
 
   return h('div', { class: 'stack' },
     h('section', { class: 'card' },
       h('p', { class: 'eyebrow' }, 'Duelo'), h('h2', null, banner),
       h('div', { class: 'duel' }, col(a), h('div', { class: 'duel-vs', 'aria-hidden': 'true' }, 'vs'), col(b)),
-      h('p', { class: 'muted small' }, `🎁 desafios cumpridos · ⭐ avaliações completas (+${POINTS.rating} cada).`)),
+      h('p', { class: 'muted small' }, `Desafios: +${CHALLENGE_POINTS.individual} por adivinha certa ou prova vencida. Avaliações completas: +${POINTS.rating} cada.`)),
     h('section', { class: 'card' },
       h('h2', null, 'Pontos da equipa'),
       h('div', { class: 'row between' }, h('span', null, `Paragens visitadas (+${POINTS.visit} cada)`), h('strong', null, String(sc.team.visits))),
+      h('div', { class: 'row between' }, h('span', null, `Desafios concluídos (+${CHALLENGE_POINTS.team} cada)`), h('strong', null, String(sc.team.challenges))),
       h('div', { class: 'row between' }, h('span', null, `Fotografias (+${POINTS.photo} cada, até ${POINTS.photoCap} por paragem)`), h('strong', null, String(sc.team.photos))),
       h('div', { class: 'row between total' }, h('span', null, 'Total do rally'), h('strong', null, String(sc.team.total))))
+  );
+}
+
+function stopSelect({ label, value, options, onChange }) {
+  const sel = h('select', { 'aria-label': label, onchange: (e) => onChange(e.target.value || null) },
+    h('option', { value: '' }, 'Por escolher'),
+    ...options.map((o) => h('option', { value: o.id, selected: o.id === value }, o.label)));
+  return h('label', { class: 'field' }, h('span', null, label), sel);
+}
+
+function summaryTab(state, counts) {
+  const sc = computeScores(state, counts);
+  const prog = progress(state, counts);
+  const sm = state.summary || { favorites: {}, best: null, compare: null };
+  const visited = state.stops.filter((s) => isVisited(state, s.id));
+  const stopOpts = (list) => list.map((s) => ({ id: s.id, label: s.short || s.name }));
+  const doneStops = state.stops.filter((s) => state.challenges[s.id]?.status === 'done');
+  const bestOpts = doneStops.map((s) => ({ id: s.id, label: `${state.challenges[s.id].title} · ${s.short || s.name}` }));
+  const cmp = sm.compare;
+  const cmpText = !cmp ? 'Ainda por decidir' : cmp.winner === 'gazela' ? 'Gazela' : cmp.winner === 'republica' ? 'República dos Cachorros' : 'Empate';
+  const row = (k, v) => h('div', { class: 'row between' }, h('span', { class: 'muted' }, k), h('strong', null, v));
+
+  return h('div', { class: 'stack' },
+    h('section', { class: 'card' },
+      h('h2', null, 'Resumo do rally'),
+      row('Paragens visitadas', `${prog.visited} de ${prog.total}`),
+      row('Desafios concluídos', `${prog.challengesDone} de ${prog.total}`),
+      ...state.players.map((p) => row(`Pontos individuais · ${p.name}`, String(sc.players[p.id].challenges))),
+      h('p', { class: 'tiny muted' }, 'Pontos individuais dos desafios: só adivinhas certas e provas vencidas. Conversas e memórias não dão pontos.')),
+    h('section', { class: 'card' },
+      h('h2', null, 'Os vossos favoritos'),
+      ...state.players.map((p) => stopSelect({
+        label: `Snack favorito de ${p.name}`, value: sm.favorites[p.id] || '', options: stopOpts(visited),
+        onChange: (v) => store.update((s) => { const x = (s.summary ||= { favorites: {}, best: null, compare: null }); if (v) x.favorites[p.id] = v; else delete x.favorites[p.id]; }),
+      })),
+      stopSelect({
+        label: 'Melhor desafio da noite', value: sm.best || '', options: bestOpts,
+        onChange: (v) => store.update((s) => { (s.summary ||= { favorites: {}, best: null, compare: null }).best = v; }),
+      }),
+      !visited.length ? h('p', { class: 'tiny muted' }, 'Os favoritos aparecem à medida que visitam paragens.') : null,
+      !bestOpts.length ? h('p', { class: 'tiny muted' }, 'O melhor desafio pode ser escolhido depois de concluírem pelo menos um.') : null),
+    h('section', { class: 'card' },
+      h('p', { class: 'eyebrow' }, 'Gazela vs. República dos Cachorros'),
+      h('h2', null, cmpText),
+      h('p', { class: 'tiny muted' }, 'Decide-se no desafio “Gazela vs. República”, na paragem da República dos Cachorros.'))
   );
 }
 
@@ -100,6 +146,7 @@ export function renderRanking({ state, photos }) {
     { id: 'paragens', label: 'Paragens' },
     { id: 'duelo', label: 'Duelo' },
     { id: 'conquistas', label: 'Conquistas' },
+    { id: 'resumo', label: 'Resumo' },
   ];
   if (!tabs.some((t) => t.id === session.rankingTab)) session.rankingTab = 'paragens';
 
@@ -109,7 +156,7 @@ export function renderRanking({ state, photos }) {
       onclick: () => { session.rankingTab = t.id; store.update(() => {}); },
     }, t.label)));
 
-  const body = session.rankingTab === 'duelo' ? duelTab(state, counts) : session.rankingTab === 'conquistas' ? achievementsTab(state, counts) : stopsTab(state);
+  const body = session.rankingTab === 'duelo' ? duelTab(state, counts) : session.rankingTab === 'conquistas' ? achievementsTab(state, counts) : session.rankingTab === 'resumo' ? summaryTab(state, counts) : stopsTab(state);
 
   return h('div', { class: 'view' },
     pageHeader({ title: 'Ranking', subtitle: `${computeScores(state, counts).team.total} pts da equipa` }),

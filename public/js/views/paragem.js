@@ -2,8 +2,8 @@
 import { h, icon, pageHeader, toast, plural, formatTime, formatScore, starInput, starText } from '../ui.js';
 import * as store from '../store.js';
 import { session } from '../session.js';
-import { CHALLENGES } from '../data.js';
-import { CATEGORIES, POINTS, isVisited, mapsLinks, distanceM, formatDistance, pickChallenge, stopSummary, isRatingComplete } from '../logic.js';
+import { challengeCard } from './desafio.js';
+import { CATEGORIES, POINTS, isVisited, mapsLinks, distanceM, formatDistance, stopSummary, isRatingComplete } from '../logic.js';
 import { openStopForm } from './roteiro.js';
 import { thumbGrid, WHERE_NOTE } from './galeria.js';
 
@@ -65,68 +65,6 @@ function stopCard(state, st, idx) {
     card.append(h('div', { class: 'row between visited-row' },
       h('span', { class: 'state ok' }, icon('check', 15), `Visitada às ${formatTime(state.visits[st.id].arrivedAt)}`),
       h('button', { class: 'link-btn', type: 'button', onclick: () => store.update((s) => { delete s.visits[st.id]; }) }, 'Desfazer')
-    ));
-  }
-  return card;
-}
-
-/* ---------- desafio surpresa ---------- */
-
-function revealChallenge(stopId) {
-  const s = store.get();
-  const used = new Set(Object.values(s.challenges).map((c) => c.challengeId));
-  const c = pickChallenge(CHALLENGES, used);
-  session.justRevealed = stopId;
-  return store.update((st) => {
-    store.ensureVisited(stopId);
-    st.challenges[stopId] = {
-      challengeId: c.id, title: c.title, text: c.text, points: c.points,
-      status: 'revealed', revealedAt: new Date().toISOString(), doneAt: null, by: [],
-    };
-  });
-}
-
-function challengeCard(state, st) {
-  const ch = state.challenges[st.id];
-  const card = h('section', { class: 'card challenge' }, h('h2', null, 'Desafio surpresa'));
-
-  if (!ch) {
-    card.append(
-      h('p', { class: 'muted' }, 'Só se revela quando estiverem no sítio. É opcional: se não se adequar (alergias, preferências), passem à frente.'),
-      h('button', { class: 'btn accent block big', type: 'button', onclick: () => revealChallenge(st.id) }, 'Revelar desafio')
-    );
-    return card;
-  }
-
-  const pop = session.justRevealed === st.id;
-  if (pop) session.justRevealed = null;
-  const box = h('div', { class: `challenge-box ${pop ? 'pop' : ''} ${ch.status}` },
-    h('div', { class: 'row between' }, h('strong', null, ch.title), h('span', { class: 'chip warn' }, `${ch.points} pts`)),
-    h('p', null, ch.text)
-  );
-  card.append(box);
-
-  if (ch.status === 'revealed') {
-    const done = (ids) => store.update((s) => {
-      const c = s.challenges[st.id];
-      c.status = 'done'; c.doneAt = new Date().toISOString(); c.by = ids;
-    });
-    card.append(
-      h('p', { class: 'muted small' }, 'Quem cumpriu?'),
-      h('div', { class: 'row wrap' },
-        ...state.players.map((p) => h('button', { class: 'btn small', type: 'button', onclick: () => done([p.id]) }, p.name)),
-        h('button', { class: 'btn small primary', type: 'button', onclick: () => done(state.players.map((p) => p.id)) }, 'Os dois')),
-      h('button', { class: 'link-btn', type: 'button', onclick: () => store.update((s) => { s.challenges[st.id].status = 'skipped'; }) }, 'Passar este desafio')
-    );
-  } else if (ch.status === 'done') {
-    card.append(h('div', { class: 'row between' },
-      h('span', { class: 'chip ok' }, `✓ Cumprido por ${ch.by.map((id) => playerName(state, id)).join(' e ')} (+${ch.points} pts cada)`),
-      h('button', { class: 'link-btn', type: 'button', onclick: () => store.update((s) => { const c = s.challenges[st.id]; c.status = 'revealed'; c.by = []; c.doneAt = null; }) }, 'Desfazer')
-    ));
-  } else if (ch.status === 'skipped') {
-    card.append(h('div', { class: 'row between' },
-      h('span', { class: 'chip' }, 'Desafio ignorado'),
-      h('button', { class: 'link-btn', type: 'button', onclick: () => store.update((s) => { s.challenges[st.id].status = 'revealed'; }) }, 'Voltar a tentar')
     ));
   }
   return card;

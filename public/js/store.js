@@ -74,7 +74,7 @@ export function ensureVisited(stopId, now = new Date()) {
 export async function addStop(data) {
   const stop = {
     id: uid('s'), name: data.name, address: data.address || '', lat: data.lat ?? null, lng: data.lng ?? null,
-    note: data.note || '', example: false, short: data.short || '', zone: data.zone || '', specialty: data.specialty || '',
+    note: data.note || '', example: false, key: '', short: data.short || '', zone: data.zone || '', specialty: data.specialty || '',
     ask: data.ask || '', desc: data.desc || '', hours: data.hours || '', optional: !!data.optional,
   };
   await update((s) => {
@@ -106,6 +106,9 @@ export async function removeStop(id) {
     delete s.visits[id];
     delete s.challenges[id];
     delete s.ratings[id];
+    const sm = (s.summary ||= { favorites: {}, best: null, compare: null });
+    if (sm.best === id) sm.best = null;
+    for (const k of Object.keys(sm.favorites)) if (sm.favorites[k] === id) delete sm.favorites[k];
   });
 }
 
@@ -129,6 +132,7 @@ export async function resetRally({ keepStops = true, keepPlayers = true } = {}) 
     s.visits = {};
     s.challenges = {};
     s.ratings = {};
+    s.summary = { favorites: {}, best: null, compare: null };
     s.createdAt = new Date().toISOString();
     if (!keepStops) s.stops = fresh.stops;
     if (!keepPlayers) {

@@ -3,7 +3,7 @@ import { h, s, icon, pageHeader, openSheet, confirmDialog, toast, plural, starTe
 import * as store from '../store.js';
 import {
   progress, nextStop, isVisited, projectStops, computeScores, stopSummary, hasCoords,
-  parseCoords, formatCoords, parseBulkStops, uid, placeLabels, distanceM, formatDistance, mapsLinks,
+  parseCoords, formatCoords, parseBulkStops, uid, placeLabels, spreadPositions, distanceM, formatDistance, mapsLinks,
 } from '../logic.js';
 import { RALLY_WINDOW } from '../data.js';
 
@@ -20,7 +20,7 @@ const subline = (st) => [st.zone, st.specialty].filter(Boolean).join(' · ') || 
 /* ---------- mapa ---------- */
 
 export function buildMap(state, nextId, go) {
-  const pos = projectStops(state.stops, MAP_W, MAP_H, 44);
+  const pos = spreadPositions(projectStops(state.stops, MAP_W, MAP_H, 44), 30, MAP_W, MAP_H);
   const svg = s('svg', { viewBox: `0 0 ${MAP_W} ${MAP_H}`, class: 'map-svg', role: 'group', 'aria-label': 'Mapa esquemático do roteiro, sem escala' });
 
   svg.append(s('rect', { class: 'map-bg', x: 0, y: 0, width: MAP_W, height: MAP_H, rx: 12 }));

@@ -4,4 +4,5 @@ export const session = {
   rankingTab: 'paragens',
   justRevealed: null,
   justVisited: null,
+  concluding: null,
 };

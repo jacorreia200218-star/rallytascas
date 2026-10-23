@@ -6,9 +6,8 @@ ficam guardadas só no iPhone.
 
 ## O que faz
 
-- **Roteiro** (v1.1): percurso real do Porto já carregado, por esta ordem: Cervejaria Gazela → Casa Guedes Tradicional → Café Santiago (prova opcional) → Conga — Casa das Bifanas → Confeitaria do Bolhão. Moradas e coordenadas confirmadas em fonte de mapas; **horários não estão guardados** (por confirmar; campo editável por paragem). Tema escuro, cabeçalho com progresso, próxima paragem em destaque; mapa esquemático sem escala (funciona sem rede); distâncias mostradas só em linha reta; lista editável
-  (adicionar uma a uma ou colar várias de uma vez); botões “Abrir no Mapas” e “Google Maps” por paragem.
-- **Desafios surpresa**: 24 desafios opcionais, sem álcool nem pressas. Revelam-se em cada paragem, sem repetir.
+- **Roteiro** (v1.2): percurso real do Porto já carregado, por esta ordem (a mais curta em linha reta, ~1,7 km, com a Gazela em 1.º e o Pastel de Bacalhau no fim): Cervejaria Gazela → Oficina dos Rissóis → Casa Guedes Tradicional → República dos Cachorros → Conga — Casa das Bifanas → Casa Portuguesa do Pastel de Bacalhau. Moradas e coordenadas confirmadas em fonte de mapas; **horários não estão guardados** (por confirmar; campo editável por paragem). As distâncias mostradas são **estimadas em linha reta**, não percurso a pé confirmado. Mapa esquemático sem escala (funciona sem rede); lista editável
+- **Desafios a dois** (8 categorias, tudo local): cada paragem tem um desafio principal e 3 alternativas (+ reserva geral sem repetir perguntas). Respostas secretas reveladas em simultâneo, adivinhas, cronómetro opcional, “Outro desafio” e “Saltar” sem penalização. Pontos: concluir = 1 para o rally; adivinha certa / prova vencida = 1 individual; conversas e memórias não dão pontos. Ranking › Resumo: favoritos, melhor desafio e Gazela vs. República.
 - **Fotografias**: câmara ou biblioteca, associadas à paragem, reduzidas a 1920 px no próprio telemóvel.
 - **Avaliação individual** (cada um dos dois): comida, qualidade/preço, ambiente e atendimento, 1–5 estrelas.
 - **Ranking** das paragens, **duelo** entre os dois jogadores, **conquistas** e **progresso**.
@@ -83,7 +82,7 @@ os dados da app pertencem ao endereço (`https://…`). **Se o endereço mudar, 
 
 ## Atualizar a app
 
-Altera os ficheiros em `public/`, aumenta `VERSION` em `public/sw.js` (por exemplo de `v2` para `v3`) e envia para o
+Altera os ficheiros em `public/`, aumenta `VERSION` em `public/sw.js` (por exemplo de `v3` para `v4`) e envia para o
 `main`. Na abertura seguinte, com rede, a app mostra “Nova versão instalada”. Os dados do rally não são tocados.
 
 ## Estrutura
@@ -91,7 +90,7 @@ Altera os ficheiros em `public/`, aumenta `VERSION` em `public/sw.js` (por exemp
 ```
 public/            ← tudo o que é publicado
   index.html, manifest.webmanifest, sw.js, _headers, icons/, css/
-  js/              app.js, store.js, db.js, logic.js, data.js, photos.js, imaging.js,
+  js/              app.js, store.js, db.js, logic.js, data.js, challenges.js, photos.js, imaging.js,
                    transfer.js, zip.js, diagnostico.js, ui.js, session.js, views/
 tests/             testes sem dependências (node --test tests/*.test.mjs)
 tools/make_icons.py gerador dos ícones (já executado)
