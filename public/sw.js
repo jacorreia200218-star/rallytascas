@@ -3,7 +3,7 @@
  * - Só trata pedidos GET ao próprio endereço; nunca contacta outros servidores.
  * - Para publicar uma nova versão: mude VERSION (a cache antiga é apagada).
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = `rally-gastronomico-${VERSION}`;
 
 // Mantenha esta lista igual aos ficheiros de public/ (há um teste que o verifica).

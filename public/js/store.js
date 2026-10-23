@@ -1,7 +1,7 @@
 /* Estado em memória + persistência imediata em IndexedDB. */
 import * as db from './db.js';
-import { createInitialState } from './data.js';
-import { normalizeState, uid, POINTS } from './logic.js';
+import { createInitialState, upgradeState } from './data.js';
+import { normalizeState, uid, POINTS, SCHEMA_VERSION } from './logic.js';
 
 let state = null;
 let chain = Promise.resolve();
@@ -40,7 +40,9 @@ export async function init() {
   const stored = await db.loadState();
   if (stored) {
     state = normalizeState(stored);
-    // setupDone é preservado por normalizeState; nada mais a migrar na versão 1
+    if (upgradeState(state) || (stored.schemaVersion || 1) < SCHEMA_VERSION) {
+      await db.saveState(JSON.parse(JSON.stringify(state))); // migração: guarda já no novo formato
+    }
   } else {
     state = createInitialState();
     await db.saveState(JSON.parse(JSON.stringify(state)));
@@ -58,6 +60,7 @@ export async function update(mutator, { silent = false } = {}) {
 
 export async function replaceState(next) {
   state = normalizeState(next);
+  upgradeState(state);
   await persist();
   listeners.forEach((fn) => fn({ type: 'replace' }));
 }
@@ -69,7 +72,11 @@ export function ensureVisited(stopId, now = new Date()) {
 }
 
 export async function addStop(data) {
-  const stop = { id: uid('s'), name: data.name, address: data.address || '', lat: data.lat ?? null, lng: data.lng ?? null, note: data.note || '', example: false };
+  const stop = {
+    id: uid('s'), name: data.name, address: data.address || '', lat: data.lat ?? null, lng: data.lng ?? null,
+    note: data.note || '', example: false, short: data.short || '', zone: data.zone || '', specialty: data.specialty || '',
+    ask: data.ask || '', desc: data.desc || '', hours: data.hours || '', optional: !!data.optional,
+  };
   await update((s) => {
     s.stops.push(stop);
   });

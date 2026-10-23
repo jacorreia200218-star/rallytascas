@@ -30,15 +30,66 @@ export const CHALLENGES = [
   { id: 'c24', title: 'Melhor sítio da mesa', text: 'Descubram, por votação secreta, qual foi o melhor detalhe da tasca: comida, ambiente ou pessoas.', points: 5 },
 ];
 
-/* Paragens de exemplo (marcadas como tal). A app pede para as substituírem pelo roteiro real. */
+/* Percurso real (ordem fixa). Moradas e coordenadas confirmadas em fonte de mapas (Google Places, out. 2026).
+ * Horários de funcionamento NÃO são guardados: ficam por confirmar (campo `hours` vazio, editável na app). */
+export const ROUTE = [
+  {
+    name: 'Cervejaria Gazela', short: 'Gazela', zone: 'Batalha', specialty: 'Cachorrinho',
+    address: 'Travessa de Cimo de Vila, 4, Porto', lat: 41.1448829, lng: -8.607595,
+    ask: 'Um cachorrinho para partilhar.',
+    desc: 'Casa conhecida pelo cachorrinho, uma sandes pequena e quente com salsicha.',
+  },
+  {
+    name: 'Casa Guedes Tradicional', short: 'Casa Guedes', zone: 'Poveiros', specialty: 'Sandes de pernil',
+    address: 'Praça dos Poveiros, 130, Porto', lat: 41.146016, lng: -8.6034864,
+    ask: 'Uma sandes de pernil para partilhar. Queijo da Serra como extra opcional.',
+    desc: 'Casa conhecida pela sandes de pernil.',
+  },
+  {
+    name: 'Café Santiago', short: 'Café Santiago', zone: 'Passos Manuel', specialty: 'Francesinha',
+    address: 'Rua de Passos Manuel, 226, Porto', lat: 41.1463821, lng: -8.6048251,
+    ask: 'Partilhar uma francesinha, se o restaurante permitir.',
+    desc: 'Casa conhecida pela francesinha. Prova opcional: é uma refeição pesada.',
+    optional: true,
+  },
+  {
+    name: 'Conga — Casa das Bifanas', short: 'Conga', zone: 'Bonjardim', specialty: 'Bifana',
+    address: 'Rua do Bonjardim, 318, Porto', lat: 41.1489414, lng: -8.6093776,
+    ask: 'Uma bifana para partilhar.',
+    desc: 'Casa conhecida pela bifana.',
+  },
+  {
+    name: 'Confeitaria do Bolhão', short: 'Bolhão', zone: 'Bolhão', specialty: 'Pastelaria tradicional',
+    address: 'Rua Formosa, 339, Porto', lat: 41.1485339, lng: -8.6075535,
+    ask: 'Dois doces pequenos para partilhar, ou um doce e dois cafés.',
+    desc: 'Pastelaria e confeitaria tradicional na zona do Bolhão.',
+  },
+];
+
+export const RALLY_WINDOW = '18:00–21:00';
+
+const STOP_DEFAULTS = { note: '', example: false, short: '', zone: '', specialty: '', ask: '', desc: '', hours: '', optional: false };
+
 export function seedStops() {
-  return [
-    { name: 'Paragem de exemplo 1', address: 'Ribeira', lat: 41.1407, lng: -8.613 },
-    { name: 'Paragem de exemplo 2', address: 'Clérigos', lat: 41.1458, lng: -8.6145 },
-    { name: 'Paragem de exemplo 3', address: 'Aliados', lat: 41.1485, lng: -8.611 },
-    { name: 'Paragem de exemplo 4', address: 'Bolhão', lat: 41.1496, lng: -8.6074 },
-    { name: 'Paragem de exemplo 5', address: 'Cedofeita', lat: 41.1536, lng: -8.6226 },
-  ].map((s) => ({ id: uid('s'), note: '', example: true, ...s }));
+  return ROUTE.map((s) => ({ id: uid('s'), ...STOP_DEFAULTS, ...s }));
+}
+
+/** Migração v1 → v2: se o roteiro ainda é só o de demonstração (todas as paragens marcadas como exemplo),
+ *  substitui-o pelo percurso real MANTENDO os ids das paragens (visitas, desafios, avaliações e fotografias
+ *  continuam ligados). Se o utilizador já editou alguma paragem, nada é substituído. Devolve true se alterou. */
+export function upgradeState(state) {
+  const stops = state.stops;
+  if (!stops.length || !stops.every((x) => x.example)) return false;
+  const real = ROUTE;
+  const hasData = (id) => !!(state.visits[id] || state.challenges[id] || state.ratings[id]);
+  const out = [];
+  stops.forEach((old, i) => {
+    if (i < real.length) out.push({ ...STOP_DEFAULTS, ...real[i], id: old.id });
+    else if (hasData(old.id)) out.push(old); // nunca apagar paragens com registos
+  });
+  for (let i = stops.length; i < real.length; i++) out.push({ id: uid('s'), ...STOP_DEFAULTS, ...real[i] });
+  state.stops = out;
+  return true;
 }
 
 export function createInitialState(now = new Date()) {

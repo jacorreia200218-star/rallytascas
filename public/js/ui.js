@@ -180,17 +180,37 @@ export function confirmDialog({ title, message, confirmText = 'Confirmar', cance
 
 /* ---------- componentes ---------- */
 
-export function pageHeader({ title, subtitle, back = null, actions = null }) {
+export function pageHeader({ title, subtitle, back = null, actions = null, pct = null }) {
   return h('header', { class: 'page-header' },
     h('div', { class: 'page-header-row' },
-      back ? h('a', { class: 'back', href: back, 'aria-label': 'Voltar' }, '‹') : null,
+      back ? h('a', { class: 'back', href: back, 'aria-label': 'Voltar' }, icon('back')) : null,
       h('div', { class: 'grow' },
         h('h1', null, title),
         subtitle ? h('p', { class: 'subtitle' }, subtitle) : null
       ),
       actions
-    )
+    ),
+    pct !== null ? progressBar(pct, 'Progresso do rally') : null
   );
+}
+
+/* Ícones de traço simples (SVG inline, sem pedidos externos). */
+const ICONS = {
+  map: 'M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5 9 4Zm0 0v13m6-10.5v13',
+  image: 'M4 5h16v14H4zM4 16l4.5-4.5 3.5 3.5 3-3L20 16M9 9.5h.01',
+  trophy: 'M8 4h8v5a4 4 0 0 1-8 0V4Zm0 2H4v1a3 3 0 0 0 4 2.8M16 6h4v1a3 3 0 0 1-4 2.8M12 13v4m-3.5 3h7M10 17h4',
+  more: 'M5 7h14M5 12h14M5 17h14',
+  back: 'M14.5 5.5 8 12l6.5 6.5',
+  chevron: 'm9.5 5.5 6.5 6.5-6.5 6.5',
+  check: 'm5 12.5 4.5 4.5L19 7.5',
+  pin: 'M12 21s6.5-5.6 6.5-11a6.5 6.5 0 0 0-13 0c0 5.4 6.5 11 6.5 11Zm0-8.2a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6Z',
+  nav: 'M20 4 4 10.8l6.3 2.2L12.5 20 20 4Z',
+  camera: 'M4 8h3l1.5-2h7L17 8h3v11H4V8Zm8 8.5a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z',
+};
+
+export function icon(name, size = 20) {
+  return s('svg', { class: `ico ico-${name}`, viewBox: '0 0 24 24', width: String(size), height: String(size), fill: 'none', stroke: 'currentColor', 'stroke-width': '1.7', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false' },
+    s('path', { d: ICONS[name] || '' }));
 }
 
 export function progressBar(pct, label) {

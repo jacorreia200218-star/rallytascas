@@ -1,7 +1,7 @@
 /* Arranque da aplicação: dados locais, rotas, separadores, service worker. */
 import * as store from './store.js';
 import * as photos from './photos.js';
-import { h, clear, toast, openSheet, closeDismissibleSheets } from './ui.js';
+import { h, clear, icon, toast, openSheet, closeDismissibleSheets } from './ui.js';
 import { renderRoteiro, renderEditar } from './views/roteiro.js';
 import { renderParagem } from './views/paragem.js';
 import { renderGaleria } from './views/galeria.js';
@@ -12,10 +12,10 @@ const app = document.getElementById('app');
 const tabbar = document.getElementById('tabbar');
 
 const TABS = [
-  { id: 'roteiro', href: '#/', label: 'Roteiro', icon: '🗺️' },
-  { id: 'galeria', href: '#/galeria', label: 'Galeria', icon: '📸' },
-  { id: 'ranking', href: '#/ranking', label: 'Ranking', icon: '🏆' },
-  { id: 'mais', href: '#/mais', label: 'Mais', icon: '⚙️' },
+  { id: 'roteiro', href: '#/', label: 'Roteiro', icon: 'map' },
+  { id: 'galeria', href: '#/galeria', label: 'Galeria', icon: 'image' },
+  { id: 'ranking', href: '#/ranking', label: 'Ranking', icon: 'trophy' },
+  { id: 'mais', href: '#/mais', label: 'Mais', icon: 'more' },
 ];
 
 function resolveRoute() {
@@ -37,7 +37,7 @@ function buildTabbar(activeTab) {
   for (const t of TABS) {
     tabbar.append(
       h('a', { href: t.href, class: `tab ${t.id === activeTab ? 'active' : ''}`, 'aria-current': t.id === activeTab ? 'page' : null },
-        h('span', { class: 'tab-icon', 'aria-hidden': 'true' }, t.icon),
+        h('span', { class: 'tab-icon', 'aria-hidden': 'true' }, icon(t.icon, 22)),
         h('span', { class: 'tab-label' }, t.label)
       )
     );
@@ -94,11 +94,11 @@ function showSetup() {
     h('label', { class: 'field' }, h('span', null, 'Nome de quem joga (1)'), n1),
     h('label', { class: 'field' }, h('span', null, 'Nome de quem joga (2)'), n2),
     h('div', { class: 'note' },
-      h('strong', null, '🔒 Privado por desenho. '),
+      h('strong', null, 'Privado por desenho. '),
       'Fotografias e avaliações ficam guardadas só neste telemóvel, dentro desta app. Não há contas, servidores nem estatísticas. Mais detalhes em Mais › Privacidade.'),
     h('button', { class: 'btn primary block', type: 'submit' }, 'Começar o rally')
   );
-  const sheet = openSheet({ title: 'Bem-vindos ao Rally 🍽️', content: form, dismissible: false });
+  const sheet = openSheet({ title: 'Bem-vindos ao Rally', content: form, dismissible: false });
 }
 
 /* ---------- armazenamento persistente e service worker ---------- */
@@ -142,7 +142,7 @@ async function boot() {
   }
 
   store.subscribe((ev) => {
-    if (ev.type === 'save-error') toast('⚠️ Não foi possível guardar as alterações neste telemóvel.', { ms: 6000 });
+    if (ev.type === 'save-error') toast('Não foi possível guardar as alterações neste telemóvel.', { ms: 6000 });
     else ctx.rerender();
   });
   window.addEventListener('hashchange', () => render());

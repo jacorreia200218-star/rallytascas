@@ -3,4 +3,5 @@ export const session = {
   ratingPlayer: null,
   rankingTab: 'paragens',
   justRevealed: null,
+  justVisited: null,
 };

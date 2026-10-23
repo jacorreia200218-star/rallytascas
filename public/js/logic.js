@@ -9,7 +9,7 @@ export const CATEGORIES = [
 ];
 
 export const POINTS = { visit: 10, rating: 5, photo: 2, photoCap: 3 };
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /* ---------- utilitários ---------- */
 
@@ -279,7 +279,8 @@ export function placeLabels(stops, pos, W = 360, H = 260) {
   for (const st of stops) {
     const p = pos.get(st.id);
     if (!p) continue;
-    const text = st.name.length > 14 ? `${st.name.slice(0, 13)}…` : st.name;
+    const full = st.short || st.name;
+    const text = full.length > 18 ? `${full.slice(0, 17)}…` : full;
     const w = text.length * 5.6 + 8;
     for (const dy of [29, -20]) {
       const r = { x1: p.x - w / 2, x2: p.x + w / 2, y1: p.y + dy - 10, y2: p.y + dy + 3 };
@@ -292,6 +293,23 @@ export function placeLabels(stops, pos, W = 360, H = 260) {
     }
   }
   return out;
+}
+
+/* Distância em linha reta (metros) entre duas paragens com coordenadas; null se faltarem. */
+export function distanceM(a, b) {
+  if (!hasCoords(a) || !hasCoords(b)) return null;
+  const R = 6371000;
+  const rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+export function formatDistance(m) {
+  if (m === null || m === undefined) return '';
+  if (m < 950) return `${Math.max(10, Math.round(m / 10) * 10)} m`;
+  return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 }
 
 export function mapsLinks(stop) {
@@ -374,6 +392,13 @@ export function normalizeState(raw) {
       lng: ok ? lng : null,
       note: str(s?.note, 300),
       example: !!s?.example,
+      short: str(s?.short, 20),
+      zone: str(s?.zone, 40),
+      specialty: str(s?.specialty, 60),
+      ask: str(s?.ask, 200),
+      desc: str(s?.desc, 300),
+      hours: str(s?.hours, 80),
+      optional: !!s?.optional,
     };
   });
 

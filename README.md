@@ -6,7 +6,7 @@ ficam guardadas só no iPhone.
 
 ## O que faz
 
-- **Roteiro**: mapa esquemático (funciona sem rede) com o percurso e o estado de cada paragem; lista editável
+- **Roteiro** (v1.1): percurso real do Porto já carregado, por esta ordem: Cervejaria Gazela → Casa Guedes Tradicional → Café Santiago (prova opcional) → Conga — Casa das Bifanas → Confeitaria do Bolhão. Moradas e coordenadas confirmadas em fonte de mapas; **horários não estão guardados** (por confirmar; campo editável por paragem). Tema escuro, cabeçalho com progresso, próxima paragem em destaque; mapa esquemático sem escala (funciona sem rede); distâncias mostradas só em linha reta; lista editável
   (adicionar uma a uma ou colar várias de uma vez); botões “Abrir no Mapas” e “Google Maps” por paragem.
 - **Desafios surpresa**: 24 desafios opcionais, sem álcool nem pressas. Revelam-se em cada paragem, sem repetir.
 - **Fotografias**: câmara ou biblioteca, associadas à paragem, reduzidas a 1920 px no próprio telemóvel.
@@ -74,7 +74,7 @@ os dados da app pertencem ao endereço (`https://…`). **Se o endereço mudar, 
 
 ## Checklist antes do rally (5 minutos, no iPhone)
 
-1. Abre a app pelo ícone, escreve os nomes e cria as paragens reais (Roteiro › Editar roteiro).
+1. Abre a app pelo ícone, escreve os nomes e cria as paragens reais (Roteiro › Editar roteiro; o percurso real já vem carregado).
 2. **Mais › Executar diagnóstico**: todos os itens devem estar ✓ (ou “!” explicado).
 3. Numa paragem de teste: tira uma fotografia, avalia, revela um desafio. Fecha a app e abre-a outra vez: tudo deve estar lá.
 4. **Galeria › Exportar › Guardar em Fotografias** e confirma que a imagem aparece na app Fotografias.
@@ -83,7 +83,7 @@ os dados da app pertencem ao endereço (`https://…`). **Se o endereço mudar, 
 
 ## Atualizar a app
 
-Altera os ficheiros em `public/`, aumenta `VERSION` em `public/sw.js` (por exemplo de `v1` para `v2`) e envia para o
+Altera os ficheiros em `public/`, aumenta `VERSION` em `public/sw.js` (por exemplo de `v2` para `v3`) e envia para o
 `main`. Na abertura seguinte, com rede, a app mostra “Nova versão instalada”. Os dados do rally não são tocados.
 
 ## Estrutura

@@ -1,9 +1,9 @@
 /* Ecrã de uma paragem: chegada, desafio surpresa, fotografias e avaliações. */
-import { h, pageHeader, toast, plural, formatTime, formatScore, starInput, starText } from '../ui.js';
+import { h, icon, pageHeader, toast, plural, formatTime, formatScore, starInput, starText } from '../ui.js';
 import * as store from '../store.js';
 import { session } from '../session.js';
 import { CHALLENGES } from '../data.js';
-import { CATEGORIES, POINTS, isVisited, mapsLinks, pickChallenge, stopSummary, isRatingComplete } from '../logic.js';
+import { CATEGORIES, POINTS, isVisited, mapsLinks, distanceM, formatDistance, pickChallenge, stopSummary, isRatingComplete } from '../logic.js';
 import { openStopForm } from './roteiro.js';
 import { thumbGrid, WHERE_NOTE } from './galeria.js';
 
@@ -11,32 +11,62 @@ function playerName(state, id) {
   return state.players.find((p) => p.id === id)?.name || '?';
 }
 
-/* ---------- chegada ---------- */
+/* ---------- cabeçalho da paragem + ação principal ---------- */
 
-function arrivalCard(state, st) {
+function markVisited(state, st, idx) {
+  session.justVisited = st.id;
+  return store.update((s) => store.ensureVisited(st.id)).then(() => {
+    const total = state.stops.length;
+    const done = store.get().stops.filter((x) => store.get().visits[x.id]).length;
+    toast(`${st.short || st.name} concluída · ${done} de ${total}`, { ms: 2600 });
+  });
+}
+
+function stopCard(state, st, idx) {
   const visited = isVisited(state, st.id);
   const links = mapsLinks(st);
-  const card = h('section', { class: 'card' });
-  if (!visited) {
-    card.append(
-      h('p', { class: 'muted' }, 'Quando chegarem, toquem aqui para começar esta paragem.'),
-      h('button', { class: 'btn primary block big', type: 'button', onclick: () => store.update((s) => store.ensureVisited(st.id)) }, `📍 Chegámos! (+${POINTS.visit} pts)`)
-    );
-  } else {
-    card.append(
-      h('div', { class: 'row between' },
-        h('span', { class: 'chip ok' }, `✓ Chegada às ${formatTime(state.visits[st.id].arrivedAt)}`),
-        h('button', { class: 'link-btn', type: 'button', onclick: () => store.update((s) => { delete s.visits[st.id]; }) }, 'Desfazer')
-      )
-    );
-  }
-  if (st.address) card.append(h('p', { class: 'stop-addr' }, st.address));
-  if (st.note) card.append(h('p', { class: 'note-text' }, st.note));
-  card.append(h('div', { class: 'row wrap' },
-    h('a', { class: 'btn small', href: links.apple, target: '_blank', rel: 'noopener noreferrer' }, 'Abrir no Mapas'),
-    h('a', { class: 'btn small ghost', href: links.google, target: '_blank', rel: 'noopener noreferrer' }, 'Google Maps'),
-    h('button', { class: 'btn small ghost', type: 'button', onclick: () => openStopForm({ stop: st }) }, '✎ Editar')
+  const prev = state.stops[idx - 1];
+  const d = prev ? distanceM(prev, st) : null;
+  const flash = session.justVisited === st.id;
+  if (flash) session.justVisited = null;
+
+  const card = h('section', { class: `card stop-detail ${visited ? 'is-visited' : ''} ${flash ? 'flash' : ''}` });
+
+  card.append(h('div', { class: 'detail-top' },
+    h('span', { class: `stop-num big ${visited ? 'ok' : ''}`, 'aria-hidden': 'true' }, visited ? icon('check', 18) : String(idx + 1)),
+    h('div', { class: 'grow' },
+      h('p', { class: 'eyebrow' }, [st.zone, st.optional ? 'prova opcional' : null].filter(Boolean).join(' · ') || `Paragem ${idx + 1}`),
+      st.specialty ? h('h2', null, st.specialty) : null
+    )
   ));
+
+  if (st.ask) card.append(h('div', { class: 'ask-box' }, h('p', { class: 'eyebrow' }, 'O que pedir'), h('p', null, st.ask)));
+  if (st.desc) card.append(h('p', { class: 'muted small' }, st.desc));
+
+  card.append(h('div', { class: 'addr-row' },
+    icon('pin', 16),
+    h('div', { class: 'grow' },
+      h('p', null, st.address || 'Sem morada'),
+      h('p', { class: 'muted tiny' },
+        st.hours ? `Horário: ${st.hours}` : 'Horário não confirmado: confirma antes de ir.',
+        d !== null ? ` · ≈ ${formatDistance(d)} em linha reta desde ${prev.short || prev.name}` : '')
+    )
+  ));
+  if (st.note) card.append(h('p', { class: 'note-text' }, st.note));
+
+  card.append(h('div', { class: 'row wrap' },
+    h('a', { class: 'btn grow', href: links.apple, target: '_blank', rel: 'noopener noreferrer' }, icon('nav', 16), 'Abrir nos Mapas'),
+    h('a', { class: 'btn ghost', href: links.google, target: '_blank', rel: 'noopener noreferrer' }, 'Google Maps')
+  ));
+
+  if (!visited) {
+    card.append(h('button', { class: 'btn primary block big', type: 'button', onclick: () => markVisited(state, st, idx) }, `Marcar como visitada (+${POINTS.visit} pts)`));
+  } else {
+    card.append(h('div', { class: 'row between visited-row' },
+      h('span', { class: 'state ok' }, icon('check', 15), `Visitada às ${formatTime(state.visits[st.id].arrivedAt)}`),
+      h('button', { class: 'link-btn', type: 'button', onclick: () => store.update((s) => { delete s.visits[st.id]; }) }, 'Desfazer')
+    ));
+  }
   return card;
 }
 
@@ -58,7 +88,7 @@ function revealChallenge(stopId) {
 
 function challengeCard(state, st) {
   const ch = state.challenges[st.id];
-  const card = h('section', { class: 'card challenge' }, h('h2', null, '🎁 Desafio surpresa'));
+  const card = h('section', { class: 'card challenge' }, h('h2', null, 'Desafio surpresa'));
 
   if (!ch) {
     card.append(
@@ -128,7 +158,7 @@ function photosCard({ state, photos }, st) {
   const library = h('input', { id: libId, class: 'visually-hidden', type: 'file', accept: 'image/*', multiple: true, onchange: (e) => handle(e.target) });
 
   return h('section', { class: 'card' },
-    h('h2', null, '📷 Fotografias'),
+    h('h2', null, 'Fotografias'),
     h('div', { class: 'row wrap' },
       h('label', { class: 'btn primary', for: camId }, 'Tirar fotografia'),
       h('label', { class: 'btn', for: libId }, 'Escolher da biblioteca'),
@@ -160,7 +190,7 @@ function ratingCard(state, st) {
   const r = state.ratings[st.id]?.[pid] || {};
   const sum = stopSummary(state, st.id);
 
-  const card = h('section', { class: 'card' }, h('h2', null, '⭐ Avaliação'));
+  const card = h('section', { class: 'card' }, h('h2', null, 'Avaliação'));
   card.append(h('div', { class: 'segmented', role: 'tablist', 'aria-label': 'Quem avalia' },
     ...players.map((p) => {
       const complete = isRatingComplete(state.ratings[st.id]?.[p.id]);
@@ -173,7 +203,7 @@ function ratingCard(state, st) {
 
   for (const c of CATEGORIES) {
     card.append(h('div', { class: 'rate-row' },
-      h('div', { class: 'rate-label' }, h('span', { 'aria-hidden': 'true' }, c.icon), ' ', h('strong', null, c.label), h('span', { class: 'muted small' }, c.hint)),
+      h('div', { class: 'rate-label' }, h('strong', null, c.label), h('span', { class: 'muted small' }, c.hint)),
       starInput({ value: r[c.key] ?? null, label: `${c.label} — ${playerName(state, pid)}`, onChange: (v) => setRating(st.id, pid, c.key, v) })
     ));
   }
@@ -216,17 +246,18 @@ export function renderParagem({ state, photos }, { id }) {
   const next = state.stops[idx + 1];
 
   const content = h('div', { class: 'content' },
-    arrivalCard(state, st),
+    stopCard(state, st, idx),
     challengeCard(state, st),
     photosCard({ state, photos }, st),
     ratingCard(state, st),
+    h('button', { class: 'link-btn center', type: 'button', onclick: () => openStopForm({ stop: st }) }, 'Editar dados desta paragem'),
     h('nav', { class: 'row between pager', 'aria-label': 'Outras paragens' },
-      prev ? h('a', { class: 'btn small ghost', href: `#/paragem/${prev.id}` }, `‹ ${prev.name}`) : h('span'),
-      next ? h('a', { class: 'btn small', href: `#/paragem/${next.id}` }, `${next.name} ›`) : h('span'))
+      prev ? h('a', { class: 'btn small ghost', href: `#/paragem/${prev.id}` }, `‹ ${prev.short || prev.name}`) : h('span'),
+      next ? h('a', { class: 'btn small', href: `#/paragem/${next.id}` }, `${next.short || next.name} ›`) : h('span'))
   );
 
   return h('div', { class: 'view' },
-    pageHeader({ title: st.name, subtitle: `Paragem ${idx + 1} de ${state.stops.length}`, back: '#/' }),
+    pageHeader({ title: st.name, subtitle: `Paragem ${idx + 1} de ${state.stops.length}`, back: '#/', pct: (state.stops.filter((x) => isVisited(state, x.id)).length / Math.max(1, state.stops.length)) * 100 }),
     content
   );
 }
