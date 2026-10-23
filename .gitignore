@@ -1,0 +1,15 @@
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Ferramentas
+node_modules/
+.vercel/
+.wrangler/
+*.log
+
+# Cópias de segurança e fotografias de teste nunca vão para o repositório
+*.zip
+*.jpg
+*.jpeg
+!public/icons/*.png
